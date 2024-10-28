@@ -49,6 +49,16 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    // For animations
+    implementation("com.google.accompanist:accompanist-navigation-animation:0.30.1")
+
+    // For extended icons
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    // For custom fonts
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.5.4")
+    // For coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
     // Add Jetpack Compose Navigation
     implementation("androidx.navigation:navigation-compose:2.7.2")
 
