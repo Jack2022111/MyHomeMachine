@@ -458,6 +458,7 @@ fun LoginScreen(navController: NavHostController) {
     var loginSuccess by remember { mutableStateOf(false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     Surface(
@@ -573,6 +574,15 @@ fun LoginScreen(navController: NavHostController) {
                 }
             }
 
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             // Login button
@@ -582,7 +592,13 @@ fun LoginScreen(navController: NavHostController) {
                     scope.launch {
                         delay(1000) // Simulate network delay
                         isLoading = false
-                        loginSuccess = true
+                        if (email == "test@gmail.com" && password == "123") {
+                            loginSuccess = true
+                            errorMessage = null // Clear any previous error message
+                        } else {
+                            loginSuccess = false
+                            errorMessage = "Incorrect email or password. Please try again."
+                        }
                     }
                 },
                 modifier = Modifier
@@ -845,10 +861,10 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
     // Define device types and associated device names
     val deviceTypes = listOf("Camera", "Light", "Plug", "Sensor")
     val devicesByType = mapOf(
-        "Camera" to listOf("Security Camera", "Doorbell Camera"),
-        "Light" to listOf("Living Room Light", "Bedroom Light", "Kitchen Light"),
-        "Plug" to listOf("Smart Plug 1", "Smart Plug 2"),
-        "Sensor" to listOf("Temperature Sensor", "Air Quality Sensor")
+        "Camera" to listOf("ZephyrCam_X21", "FlashEye_T39"),
+        "Light" to listOf("Glowbit_A14", "LumenRay_M76", "AuraNode_V02"),
+        "Plug" to listOf("PulsePlug_XZ99", "VoltSpot_35P"),
+        "Sensor" to listOf("ThermoSync_Q5", "BreezeIQ_G87")
     )
 
     Scaffold(
@@ -1938,34 +1954,82 @@ fun AirQualityDisplay(airQualityHistory: List<Int>) {
     }
 }
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SchedulePage(navController: NavHostController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Text(text = "Device Schedules", style = MaterialTheme.typography.titleLarge)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Display each schedule
-        DeviceManager.schedules.forEach { schedule ->
-            Text(text = schedule, style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Back Button at the bottom left
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Top section with back button and title
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { navController.navigateUp() }) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back"
+                    )
+                }
+                Text(
+                    text = "Device Schedules",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+
+            // Schedule display card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (DeviceManager.schedules.isEmpty()) {
+                        // Message for no schedules
+                        Text(
+                            text = "No current schedules available.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else {
+                        // Display each schedule
+                        DeviceManager.schedules.forEach { schedule ->
+                            Text(text = schedule, style = MaterialTheme.typography.bodyLarge)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Back button at the bottom
             Button(
                 onClick = { navController.navigate("home") },
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
             ) {
                 Text("Back")
             }
