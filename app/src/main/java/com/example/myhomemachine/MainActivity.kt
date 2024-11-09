@@ -65,10 +65,52 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.Icons
 
 
+import android.content.Context
+import android.net.wifi.WifiConfiguration
+import android.net.wifi.WifiManager
+import android.util.Log
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.rememberNavController
+import com.example.myhomemachine.ui.theme.MyHomeMachineTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.xbill.DNS.Lookup
+import org.xbill.DNS.Type
+
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.withContext
+
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var wifiManager: WifiManager
+    private lateinit var multicastLock: WifiManager.MulticastLock
+
+    // Mutable list to store discovered devices
+    private val discoveredDevices = mutableStateListOf<String>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize Wi-Fi manager and acquire Multicast lock for mDNS discovery
+        wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        multicastLock = wifiManager.createMulticastLock("myHomeDeviceDiscovery")
+        multicastLock.setReferenceCounted(true)
+        multicastLock.acquire()
+
+        // Start device discovery on a background coroutine
+        CoroutineScope(Dispatchers.IO).launch {
+            discoverMatterDevices()
+        }
+
         enableEdgeToEdge()
         setContent {
             MyHomeMachineTheme {
@@ -76,6 +118,68 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MyNavHost(navController = navController, modifier = Modifier.padding(innerPadding))
                 }
+            }
+        }
+    }
+
+    // Function to discover Matter devices using mDNS
+    private suspend fun discoverMatterDevices() {
+        try {
+            // Lookup for devices with the "_matter._tcp.local." service type
+            val lookup = Lookup("_matter._tcp.local", Type.PTR)
+            lookup.run()
+
+            if (lookup.result == Lookup.SUCCESSFUL) {
+                val answers = lookup.answers
+                withContext(Dispatchers.Main) {
+                    for (record in answers) {
+                        val deviceName = record.name.toString()
+                        Log.d("MainActivity", "Found Matter device: $deviceName")
+
+                        // Add device name to discoveredDevices list if it's not already present
+                        if (deviceName !in discoveredDevices) {
+                            discoveredDevices.add(deviceName)
+                        }
+                    }
+                }
+            } else {
+                Log.d("MainActivity", "No Matter devices found.")
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error during device discovery", e)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        multicastLock.release()  // Release multicast lock when done
+    }
+
+    @Composable
+    fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Text("Discovered Matter Devices", style = MaterialTheme.typography.titleSmall)
+
+            // Display the list of discovered devices
+            LazyColumn {
+                items(discoveredDevices) { device ->
+                    Text(text = device, modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Example UI components for adding a new device, if applicable
+            TextField(
+                value = "",
+                onValueChange = { /* Update device name or type */ },
+                label = { Text("Enter device name") }
+            )
+            Button(onClick = {
+                // Logic for adding the device
+                onDeviceAdded()
+            }) {
+                Text("Add Device")
             }
         }
     }
@@ -385,7 +489,7 @@ fun SignupScreen(navController: NavHostController) {
                         else -> {
                             isLoading = true
                             scope.launch {
-                                kotlinx.coroutines.delay(1000) // Simulate network delay
+                                delay(1000) // Simulate network delay
                                 isLoading = false
                                 signupSuccess = true
                             }
@@ -848,6 +952,7 @@ private data class DeviceCategory(
     val route: String
 )
 
+/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController) {
@@ -859,6 +964,7 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
     var showConfirmDialog by remember { mutableStateOf(false) }
 
     // Define device types and associated device names
+
     val deviceTypes = listOf("Camera", "Light", "Plug", "Sensor")
     val devicesByType = mapOf(
         "Camera" to listOf("ZephyrCam_X21", "FlashEye_T39"),
@@ -1066,7 +1172,7 @@ if (showConfirmDialog) {
         )
     }
 }
-
+*/
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2045,7 +2151,15 @@ fun MyNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
         composable("login") { LoginScreen(navController) }
         composable("signup") { SignupScreen(navController) }
         composable("home") { HomeScreen(navController = navController) }
-        composable("addDevice") { AddDeviceScreen(onDeviceAdded = { navController.popBackStack() }, navController = navController) }
+        composable("addDevice") {
+            val mainActivity = navController.context as MainActivity
+            mainActivity.AddDeviceScreen(
+                onDeviceAdded = { navController.popBackStack() },
+                navController = navController
+            )
+        }
+
+
         composable("lights") { LightsScreen(navController = navController) }
         composable("plugs") { PlugsScreen(navController = navController) }
         composable("cameras") { CamerasScreen(navController = navController) }

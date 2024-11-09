@@ -40,6 +40,7 @@ android {
 }
 
 dependencies {
+    // Core Android and Jetpack Compose dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -54,13 +55,23 @@ dependencies {
 
     // For extended icons
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
+
     // For custom fonts
     implementation("androidx.compose.ui:ui-text-google-fonts:1.5.4")
+
     // For coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Add Jetpack Compose Navigation
+    // Jetpack Compose Navigation
     implementation("androidx.navigation:navigation-compose:2.7.2")
+
+    // Matter dependencies (replace with actual versions)
+    implementation("com.google.home.matter:matter-core:1.0.0")  // Replace with actual version
+    implementation("com.google.home.matter:matter-client:1.0.0") // Replace with actual version
+    implementation("com.google.home.matter:matter-commissioning:1.0.0") // Replace with actual version
+
+    // DNS Java library (removed duplicate version)
+    implementation("com.github.dnsjava:dnsjava:3.5.0")
 
     // Test dependencies
     testImplementation(libs.junit)
