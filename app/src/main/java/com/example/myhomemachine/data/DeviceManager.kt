@@ -32,12 +32,12 @@ object DeviceManager {
     fun addDevice(deviceName: String, type: String) {
         // Get the correct list based on type, ignoring case
         val deviceList = knownDevices[type] ?: return
-        
+
         // Add the device if it's not already in the list
         if (deviceName !in deviceList) {
             deviceList.add(deviceName)
         }
     }
 
-    
+
 }

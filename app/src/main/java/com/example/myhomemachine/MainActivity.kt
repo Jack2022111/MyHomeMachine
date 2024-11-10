@@ -65,52 +65,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.Icons
 
 
-import android.content.Context
-import android.net.wifi.WifiConfiguration
-import android.net.wifi.WifiManager
-import android.util.Log
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.navigation.compose.rememberNavController
-import com.example.myhomemachine.ui.theme.MyHomeMachineTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.xbill.DNS.Lookup
-import org.xbill.DNS.Type
-
-
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.withContext
-
 
 class MainActivity : ComponentActivity() {
-
-    private lateinit var wifiManager: WifiManager
-    private lateinit var multicastLock: WifiManager.MulticastLock
-
-    // Mutable list to store discovered devices
-    private val discoveredDevices = mutableStateListOf<String>()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Initialize Wi-Fi manager and acquire Multicast lock for mDNS discovery
-        wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        multicastLock = wifiManager.createMulticastLock("myHomeDeviceDiscovery")
-        multicastLock.setReferenceCounted(true)
-        multicastLock.acquire()
-
-        // Start device discovery on a background coroutine
-        CoroutineScope(Dispatchers.IO).launch {
-            discoverMatterDevices()
-        }
-
         enableEdgeToEdge()
         setContent {
             MyHomeMachineTheme {
@@ -118,68 +76,6 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MyNavHost(navController = navController, modifier = Modifier.padding(innerPadding))
                 }
-            }
-        }
-    }
-
-    // Function to discover Matter devices using mDNS
-    private suspend fun discoverMatterDevices() {
-        try {
-            // Lookup for devices with the "_matter._tcp.local." service type
-            val lookup = Lookup("_matter._tcp.local", Type.PTR)
-            lookup.run()
-
-            if (lookup.result == Lookup.SUCCESSFUL) {
-                val answers = lookup.answers
-                withContext(Dispatchers.Main) {
-                    for (record in answers) {
-                        val deviceName = record.name.toString()
-                        Log.d("MainActivity", "Found Matter device: $deviceName")
-
-                        // Add device name to discoveredDevices list if it's not already present
-                        if (deviceName !in discoveredDevices) {
-                            discoveredDevices.add(deviceName)
-                        }
-                    }
-                }
-            } else {
-                Log.d("MainActivity", "No Matter devices found.")
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error during device discovery", e)
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        multicastLock.release()  // Release multicast lock when done
-    }
-
-    @Composable
-    fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController) {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text("Discovered Matter Devices", style = MaterialTheme.typography.titleSmall)
-
-            // Display the list of discovered devices
-            LazyColumn {
-                items(discoveredDevices) { device ->
-                    Text(text = device, modifier = Modifier.padding(vertical = 8.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Example UI components for adding a new device, if applicable
-            TextField(
-                value = "",
-                onValueChange = { /* Update device name or type */ },
-                label = { Text("Enter device name") }
-            )
-            Button(onClick = {
-                // Logic for adding the device
-                onDeviceAdded()
-            }) {
-                Text("Add Device")
             }
         }
     }
@@ -360,9 +256,9 @@ fun SignupScreen(navController: NavHostController) {
                     // Email field
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { 
+                        onValueChange = {
                             email = it
-                            errorMessage = null 
+                            errorMessage = null
                         },
                         label = { Text("Email") },
                         leadingIcon = {
@@ -383,9 +279,9 @@ fun SignupScreen(navController: NavHostController) {
                     // Password field
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { 
+                        onValueChange = {
                             password = it
-                            errorMessage = null 
+                            errorMessage = null
                         },
                         label = { Text("Password") },
                         leadingIcon = {
@@ -397,20 +293,20 @@ fun SignupScreen(navController: NavHostController) {
                         trailingIcon = {
                             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                                 Icon(
-                                    imageVector = if (isPasswordVisible) 
-                                        Icons.Outlined.Visibility 
-                                    else 
+                                    imageVector = if (isPasswordVisible)
+                                        Icons.Outlined.Visibility
+                                    else
                                         Icons.Outlined.VisibilityOff,
-                                    contentDescription = if (isPasswordVisible) 
-                                        "Hide password" 
-                                    else 
+                                    contentDescription = if (isPasswordVisible)
+                                        "Hide password"
+                                    else
                                         "Show password"
                                 )
                             }
                         },
-                        visualTransformation = if (isPasswordVisible) 
-                            VisualTransformation.None 
-                        else 
+                        visualTransformation = if (isPasswordVisible)
+                            VisualTransformation.None
+                        else
                             PasswordVisualTransformation(),
                         isError = errorMessage != null,
                         modifier = Modifier.fillMaxWidth(),
@@ -424,9 +320,9 @@ fun SignupScreen(navController: NavHostController) {
                     // Confirm Password field
                     OutlinedTextField(
                         value = confirmPassword,
-                        onValueChange = { 
+                        onValueChange = {
                             confirmPassword = it
-                            errorMessage = null 
+                            errorMessage = null
                         },
                         label = { Text("Confirm Password") },
                         leadingIcon = {
@@ -438,20 +334,20 @@ fun SignupScreen(navController: NavHostController) {
                         trailingIcon = {
                             IconButton(onClick = { isConfirmPasswordVisible = !isConfirmPasswordVisible }) {
                                 Icon(
-                                    imageVector = if (isConfirmPasswordVisible) 
-                                        Icons.Outlined.Visibility 
-                                    else 
+                                    imageVector = if (isConfirmPasswordVisible)
+                                        Icons.Outlined.Visibility
+                                    else
                                         Icons.Outlined.VisibilityOff,
-                                    contentDescription = if (isConfirmPasswordVisible) 
-                                        "Hide password" 
-                                    else 
+                                    contentDescription = if (isConfirmPasswordVisible)
+                                        "Hide password"
+                                    else
                                         "Show password"
                                 )
                             }
                         },
-                        visualTransformation = if (isConfirmPasswordVisible) 
-                            VisualTransformation.None 
-                        else 
+                        visualTransformation = if (isConfirmPasswordVisible)
+                            VisualTransformation.None
+                        else
                             PasswordVisualTransformation(),
                         isError = errorMessage != null,
                         modifier = Modifier.fillMaxWidth(),
@@ -489,7 +385,7 @@ fun SignupScreen(navController: NavHostController) {
                         else -> {
                             isLoading = true
                             scope.launch {
-                                delay(1000) // Simulate network delay
+                                kotlinx.coroutines.delay(1000) // Simulate network delay
                                 isLoading = false
                                 signupSuccess = true
                             }
@@ -645,20 +541,20 @@ fun LoginScreen(navController: NavHostController) {
                         trailingIcon = {
                             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                                 Icon(
-                                    imageVector = if (isPasswordVisible) 
-                                        Icons.Outlined.Visibility 
-                                    else 
+                                    imageVector = if (isPasswordVisible)
+                                        Icons.Outlined.Visibility
+                                    else
                                         Icons.Outlined.VisibilityOff,
-                                    contentDescription = if (isPasswordVisible) 
-                                        "Hide password" 
-                                    else 
+                                    contentDescription = if (isPasswordVisible)
+                                        "Hide password"
+                                    else
                                         "Show password"
                                 )
                             }
                         },
-                        visualTransformation = if (isPasswordVisible) 
-                            VisualTransformation.None 
-                        else 
+                        visualTransformation = if (isPasswordVisible)
+                            VisualTransformation.None
+                        else
                             PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(
@@ -785,10 +681,10 @@ fun HomeScreen(navController: NavHostController) {
         ) {
             // Welcome section
             WelcomeSection()
-            
+
             // Quick Actions Grid
             DeviceGrid(navController)
-            
+
             // Bottom buttons
             BottomButtons(navController)
         }
@@ -842,7 +738,7 @@ private fun DeviceGrid(navController: NavHostController) {
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -855,9 +751,9 @@ private fun DeviceGrid(navController: NavHostController) {
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -952,7 +848,6 @@ private data class DeviceCategory(
     val route: String
 )
 
-/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController) {
@@ -964,7 +859,6 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
     var showConfirmDialog by remember { mutableStateOf(false) }
 
     // Define device types and associated device names
-
     val deviceTypes = listOf("Camera", "Light", "Plug", "Sensor")
     val devicesByType = mapOf(
         "Camera" to listOf("ZephyrCam_X21", "FlashEye_T39"),
@@ -1140,14 +1034,14 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
     }
 
     // Confirmation Dialog
-if (showConfirmDialog) {
+    if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Add Device") },
             text = {
                 Text(
                     "Add ${customDeviceName.ifEmpty { selectedDeviceName }} " +
-                    "to your ${selectedDeviceType} collection?"
+                            "to your ${selectedDeviceType} collection?"
                 )
             },
             confirmButton = {
@@ -1172,7 +1066,7 @@ if (showConfirmDialog) {
         )
     }
 }
-*/
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1221,7 +1115,7 @@ fun LightsScreen(navController: NavHostController) {
 
             if (selectedLight != null) {
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Light Controls Card
                 LightControlsCard(
                     isLightOn = isLightOn,
@@ -1293,7 +1187,7 @@ private fun LightSelectionCard(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = it }
@@ -1385,7 +1279,7 @@ private fun LightControlsCard(
                 text = "Brightness ${(brightness * 100).roundToInt()}%",
                 style = MaterialTheme.typography.titleMedium
             )
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1398,7 +1292,7 @@ private fun LightControlsCard(
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Slider(
                     value = brightness,
                     onValueChange = onBrightnessChange,
@@ -1406,7 +1300,7 @@ private fun LightControlsCard(
                         .weight(1f)
                         .padding(horizontal = 8.dp)
                 )
-                
+
                 Icon(
                     imageVector = Icons.Outlined.WbSunny,
                     contentDescription = "Maximum brightness",
@@ -1426,7 +1320,7 @@ private fun ColorSelectionCard(
     onColorSelected: (Color) -> Unit
 ) {
     var showCustomColorPicker by remember { mutableStateOf(false) }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1456,7 +1350,7 @@ private fun ColorSelectionCard(
                     ColorButton(Color.Blue, selectedColor, onColorSelected)
                     ColorButton(Color.Yellow, selectedColor, onColorSelected)
                 }
-                
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -1466,7 +1360,7 @@ private fun ColorSelectionCard(
                     ColorButton(Color.White, selectedColor, onColorSelected)
                     ColorButton(Color(0xFFFF8C00), selectedColor, onColorSelected) // Orange
                 }
-                
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -1530,7 +1424,7 @@ private fun CustomColorPickerDialog(
                         .background(Color(red, green, blue))
                         .clip(MaterialTheme.shapes.medium)
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // RGB Sliders
@@ -1540,14 +1434,14 @@ private fun CustomColorPickerDialog(
                     onValueChange = { red = it },
                     colors = SliderDefaults.colors(thumbColor = Color.Red)
                 )
-                
+
                 Text("Green")
                 Slider(
                     value = green,
                     onValueChange = { green = it },
                     colors = SliderDefaults.colors(thumbColor = Color.Green)
                 )
-                
+
                 Text("Blue")
                 Slider(
                     value = blue,
@@ -1723,7 +1617,7 @@ fun PlugsScreen(navController: NavHostController) {
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    
+
                     ExposedDropdownMenuBox(
                         expanded = expanded,
                         onExpandedChange = { expanded = it }
@@ -1787,7 +1681,7 @@ fun PlugsScreen(navController: NavHostController) {
                                 modifier = Modifier.size(32.dp)
                             )
                         }
-                        
+
                         Text(
                             text = if (isPlugOn) "ON" else "OFF",
                             style = MaterialTheme.typography.titleMedium,
@@ -1840,7 +1734,7 @@ fun CamerasScreen(navController: NavHostController) {
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    
+
                     ExposedDropdownMenuBox(
                         expanded = expanded,
                         onExpandedChange = { expanded = it }
@@ -1908,7 +1802,7 @@ fun SensorsScreen(navController: NavHostController) {
     var knownSensors = DeviceManager.knownSensors
     var selectedSensor by remember { mutableStateOf<String?>(null) }
     var expanded by remember { mutableStateOf(false) }
-    
+
     // Example data for temperature and air quality history
     val temperatureHistory = listOf(72, 74, 76, 75, 73)
     val airQualityHistory = listOf(42, 39, 47, 40, 43)
@@ -1946,7 +1840,7 @@ fun SensorsScreen(navController: NavHostController) {
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    
+
                     ExposedDropdownMenuBox(
                         expanded = expanded,
                         onExpandedChange = { expanded = it }
@@ -2008,7 +1902,7 @@ fun TemperatureDisplay(temperatureHistory: List<Int>) {
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
+
             temperatureHistory.forEachIndexed { index, temp ->
                 Row(
                     modifier = Modifier
@@ -2041,7 +1935,7 @@ fun AirQualityDisplay(airQualityHistory: List<Int>) {
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
+
             airQualityHistory.forEachIndexed { index, quality ->
                 Row(
                     modifier = Modifier
@@ -2151,15 +2045,7 @@ fun MyNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
         composable("login") { LoginScreen(navController) }
         composable("signup") { SignupScreen(navController) }
         composable("home") { HomeScreen(navController = navController) }
-        composable("addDevice") {
-            val mainActivity = navController.context as MainActivity
-            mainActivity.AddDeviceScreen(
-                onDeviceAdded = { navController.popBackStack() },
-                navController = navController
-            )
-        }
-
-
+        composable("addDevice") { AddDeviceScreen(onDeviceAdded = { navController.popBackStack() }, navController = navController) }
         composable("lights") { LightsScreen(navController = navController) }
         composable("plugs") { PlugsScreen(navController = navController) }
         composable("cameras") { CamerasScreen(navController = navController) }
