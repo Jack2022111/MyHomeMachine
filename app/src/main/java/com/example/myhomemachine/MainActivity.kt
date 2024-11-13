@@ -64,6 +64,86 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.Icons
 
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import java.io.IOException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.*
+import android.util.Log
+
+ /*
+class MainActivity : AppCompatActivity() {
+
+    // Initialize the DeviceController
+    private val deviceController = DeviceController()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Initialize UI elements
+        val btnTurnOn: Button = findViewById(R.id.btnTurnOn)
+        val btnTurnOff: Button = findViewById(R.id.btnTurnOff)
+
+        // Set up button listeners to control the Shelly Plug
+        btnTurnOn.setOnClickListener {
+            deviceController.turnOnPlug()
+        }
+
+        btnTurnOff.setOnClickListener {
+            deviceController.turnOffPlug()
+        }
+    }
+
+    // Inner DeviceController class to control the plug
+    inner class DeviceController {
+        private val client = OkHttpClient()
+        private val shellyIpAddress = "http://10.5.2.30"  // Replace with your Shelly Plug's IP
+
+        // Function to turn on the Shelly Plug
+        fun turnOnPlug() {
+            val request = Request.Builder()
+                .url("$shellyIpAddress/relay/0/on")
+                .build()
+
+            makeRequest(request)
+        }
+
+        // Function to turn off the Shelly Plug
+        fun turnOffPlug() {
+            val request = Request.Builder()
+                .url("$shellyIpAddress/relay/0/off")
+                .build()
+
+            makeRequest(request)
+        }
+
+        private fun makeRequest(request: Request) {
+            client.newCall(request).enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    e.printStackTrace()
+                }
+
+                override fun onResponse(call: okhttp3.Call, response: Response) {
+                    if (response.isSuccessful) {
+                        println("Request succeeded: ${response.body?.string()}")
+                    } else {
+                        println("Request failed: ${response.code}")
+                    }
+                }
+            })
+        }
+    }
+}
+
+  */
+
 
 
 class MainActivity : ComponentActivity() {
@@ -81,6 +161,49 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// DeviceController class to manage the Shelly Plug
+class DeviceController {
+    private val client = OkHttpClient()
+    private val shellyIpAddress = "http://10.5.2.30" // Shelly plug IP (this is specifically for b2 wifi network it will change later)
+
+    // Function to turn on the Shelly Plug
+    fun turnOnPlug() {
+        val request = Request.Builder()
+            .url("$shellyIpAddress/relay/0?turn=on")
+            .build()
+
+        makeRequest(request, "Turn On")
+    }
+
+    // Function to turn off the Shelly Plug
+    fun turnOffPlug() {
+        val request = Request.Builder()
+            .url("$shellyIpAddress/relay/0?turn=off")
+            .build()
+
+        makeRequest(request, "Turn Off")
+    }
+
+    // Send the request and log the response
+    private fun makeRequest(request: Request, action: String) {
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("DeviceController", "Request failed for $action: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    Log.d("DeviceController", "Request succeeded for $action: ${response.body?.string()}")
+                } else {
+                    Log.e("DeviceController", "Request failed for $action: ${response.code}")
+                }
+            }
+        })
+    }
+}
+
+
+/*
 @Composable
 fun FirstScreen(navController: NavHostController) {
     Surface(
@@ -190,6 +313,158 @@ fun FirstScreen(navController: NavHostController) {
                 }
             }
         }
+    }
+}
+
+ */
+
+
+
+@Composable
+fun FirstScreen(navController: NavHostController) {
+    // Initialize the DeviceController for controlling Shelly Plug
+    val deviceController = DeviceController()
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Top section with logo
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            // Middle section with welcome text
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Welcome to",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = "MyHomeMachine",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Bottom section with Sign-in/login buttons
+            Column(
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = { navController.navigate("login") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .animateContentSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 8.dp
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Login",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                Button(
+                    onClick = { navController.navigate("signup") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .animateContentSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 8.dp
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Sign Up",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                // Add Turn On/Off buttons for Shelly Plug
+                Button(
+                    onClick = { deviceController.turnOnPlug() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    )
+                ) {
+                    Text(text = "Turn On Shelly Plug")
+                }
+
+                Button(
+                    onClick = { deviceController.turnOffPlug() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(text = "Turn Off Shelly Plug")
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FirstScreenPreview() {
+    MyHomeMachineTheme {
+        FirstScreen(navController = rememberNavController())
     }
 }
 

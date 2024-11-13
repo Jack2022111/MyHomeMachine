@@ -49,6 +49,10 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation("androidx.appcompat:appcompat:1.4.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.3")
+
     // For animations
     implementation("com.google.accompanist:accompanist-navigation-animation:0.30.1")
 
