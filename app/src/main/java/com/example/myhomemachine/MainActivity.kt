@@ -76,6 +76,35 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import android.util.Log
+import androidx.fragment.app.FragmentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.rememberNavController
+import com.example.myhomemachine.ui.theme.MyHomeMachineTheme
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.net.wifi.ScanResult
+import android.net.wifi.WifiManager
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.net.wifi.WifiNetworkSpecifier
+import android.net.ConnectivityManager
+import android.net.NetworkRequest
+import android.os.Build
+import androidx.annotation.RequiresApi
+import android.content.Intent
+import android.net.Network
+import android.net.NetworkCapabilities
+import androidx.compose.foundation.border
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+
 
  /*
 class MainActivity : AppCompatActivity() {
@@ -144,7 +173,7 @@ class MainActivity : AppCompatActivity() {
 
   */
 
-
+/*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -161,7 +190,202 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+ */
+
+class MainActivity : FragmentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        checkAndRequestPermissions()
+
+        val logs = mutableStateListOf<String>()
+
+        // Initialize WifiScanner with the logging callback
+        val wifiScanner = WifiScanner(this) { log ->
+            logs.add(log) // Append log messages to the list
+        }
+
+        setContent {
+            MyHomeMachineTheme {
+                val navController = rememberNavController()
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    MyNavHost(
+                        navController = navController,
+                        modifier = Modifier.padding(innerPadding),
+                        logs = logs,
+                        wifiScanner = wifiScanner
+                    )
+                }
+
+                // Pass logs and wifiScanner to the MainScreen
+                MainScreen(navController, wifiScanner, logs)
+            }
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+    }
+}
+
+/*
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun MainScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+
+    // State for holding scan results
+    val scanResults = remember { mutableStateListOf<String>() }
+    val isLoading = remember { mutableStateOf(false) } // To track scan progress
+
+    // Initialize WifiScanner and provide a callback to update scan results
+    val wifiScanner = activity?.let {
+        WifiScanner(it) { results ->
+            scanResults.clear()
+            scanResults.addAll(results)
+            isLoading.value = false
+        }
+    }
+
+    // Handle permission check and scan button click
+    val onScanClick = {
+        isLoading.value = true // Set loading to true when scan starts
+        wifiScanner?.checkPermissionsAndScan()
+    }
+
+    // Displaying UI
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        content = {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Scan button
+                Button(
+                    onClick = { onScanClick() }, // Explicitly pass the lambda here
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Scan for Wi-Fi Networks")
+                }
+
+
+                // Loading indicator
+                if (isLoading.value) {
+                    CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
+                }
+
+                // Display scan results
+                if (scanResults.isEmpty()) {
+                    Text("No Wi-Fi networks found.")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.padding(top = 16.dp)
+                    ) {
+                        items(scanResults) { ssid ->
+                            Text(ssid)
+                        }
+                    }
+                }
+            }
+        }
+    )
+}
+*/
+
+
+@Composable
+fun MainScreen(
+    navController: NavHostController,
+    wifiScanner: WifiScanner?,
+    logs: MutableList<String>
+) {
+    // Pass wifiScanner and logs to FirstScreen
+    FirstScreen(navController = navController, wifiScanner = wifiScanner, logs = logs)
+}
+
+
+/*
+@Composable
+fun MainScreen(
+    navController: NavHostController,
+    wifiScanner: WifiScanner?,
+    logs: MutableList<String>
+) {
+    val activity = LocalContext.current as? FragmentActivity
+
+    // Debugging: Check if wifiScanner is null
+    //Log.d("MainScreen", "Activity: $activity")
+
+    val wifiScanner = activity?.let {
+        Log.d("MainScreen", "Initializing WifiScanner")
+        WifiScanner(it)
+    }
+
+    //Log.d("MainScreen", "wifiScanner: $wifiScanner")
+
+    // Pass wifiScanner to FirstScreen (can be null if activity is not a ComponentActivity)
+    FirstScreen(navController, wifiScanner = wifiScanner, logs = logs)
+}
+
+ */
+
+
+
+
 // DeviceController class to manage the Shelly Plug
+class DeviceController {
+    private val client = OkHttpClient()
+    //private val shellyIpAddress = "http://10.5.2.30" // Shelly plug IP (this is specifically for b2 wifi network it will change later)
+
+    // Function to turn on the Shelly Plug
+    fun turnOnPlug() {
+        toggleShellyRelay(true)
+    }
+
+    // Turn off the Shelly Plug
+    fun turnOffPlug() {
+        toggleShellyRelay(false)
+    }
+
+
+    // Send the request and log the response
+    private fun toggleShellyRelay(turnOn: Boolean) {
+        val url = if (turnOn) "http://192.168.33.1/relay/0/on" else "http://192.168.33.1/relay/0/off"
+        val request = Request.Builder()
+            .url(url)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("ShellyControl", "Failed to toggle Shelly plug: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    Log.d("ShellyControl", "Shelly plug toggled successfully.")
+                } else {
+                    Log.e("ShellyControl", "Error toggling Shelly plug: ${response.code}")
+                }
+            }
+        })
+    }
+}
+
+/*
 class DeviceController {
     private val client = OkHttpClient()
     private val shellyIpAddress = "http://10.5.2.30" // Shelly plug IP (this is specifically for b2 wifi network it will change later)
@@ -201,6 +425,8 @@ class DeviceController {
         })
     }
 }
+
+ */
 
 
 /*
@@ -319,10 +545,130 @@ fun FirstScreen(navController: NavHostController) {
  */
 
 
+/*
+@Composable
+fun FirstScreen(
+    navController: NavHostController,
+    wifiScanner: WifiScanner? = null,
+    logs: MutableList<String>
+) {
+    val deviceController = DeviceController()
+    //val logs = remember { mutableStateListOf<String>() } // Mutable state for logs
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Top section with logo
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            // Middle section with welcome text
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Welcome to",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = "MyHomeMachine",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Logs and buttons section
+            Column(
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Logs section
+                Text(
+                    text = "Logs",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .height(150.dp)
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            shape = MaterialTheme.shapes.medium
+                        )
+                        .padding(8.dp)
+                ) {
+                    logs.forEach { log ->
+                        Text(text = log, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
+                // Clear Logs button
+                Button(
+                    onClick = { logs.clear() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text(text = "Clear Logs")
+                }
+
+                // Navigation and control buttons
+                wifiScanner?.let {
+                    Button(
+                        onClick = { it.checkPermissionsAndScan() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Text(text = "Scan for Shelly Plug")
+                    }
+                }
+            }
+        }
+    }
+}
+
+*/
 
 @Composable
-fun FirstScreen(navController: NavHostController) {
-    // Initialize the DeviceController for controlling Shelly Plug
+fun FirstScreen(
+    navController: NavHostController,
+    wifiScanner: WifiScanner? = null,
+    logs: MutableList<String>
+) {
     val deviceController = DeviceController()
 
     Surface(
@@ -371,7 +717,7 @@ fun FirstScreen(navController: NavHostController) {
                 )
             }
 
-            // Bottom section with Sign-in/login buttons
+            // Logs and buttons section
             Column(
                 modifier = Modifier
                     .padding(bottom = 32.dp)
@@ -379,6 +725,180 @@ fun FirstScreen(navController: NavHostController) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Logs Section
+                Text(
+                    text = "Logs",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .height(150.dp)
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.onBackground)
+                        .padding(8.dp)
+                ) {
+                    // Scrollable logs display
+                    LazyColumn {
+                        items(logs) { log ->
+                            Text(text = log, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+
+                // Clear Logs Button
+                Button(
+                    onClick = { logs.clear() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text(text = "Clear Logs")
+                }
+
+                // Control Buttons
+                Button(
+                    onClick = {
+                        logs.add("Turning on Shelly Plug...")
+                        deviceController.turnOnPlug()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Turn On Plug")
+                }
+
+                Button(
+                    onClick = {
+                        logs.add("Turning off Shelly Plug...")
+                        deviceController.turnOffPlug()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Turn Off Plug")
+                }
+
+                wifiScanner?.let {
+                    Button(
+                        onClick = {
+                            logs.add("Scanning for Wi-Fi networks...")
+                            it.checkPermissionsAndScan()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = "Scan for Wi-Fi")
+                    }
+                }
+            }
+
+            // Bottom section with Login/Sign Up buttons
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = { navController.navigate("login") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .animateContentSize(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Login", style = MaterialTheme.typography.titleMedium)
+                }
+
+                Button(
+                    onClick = { navController.navigate("signup") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .animateContentSize(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Sign Up", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}
+
+
+
+/*
+@Composable
+fun FirstScreen(navController: NavHostController, wifiScanner: WifiScanner? = null) {
+    val deviceController = DeviceController()
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            // Top section with logo
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            // Middle section with welcome text
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Welcome to",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = "MyHomeMachine",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            // Other UI elements (logo, welcome text, etc.)
+
+            Column(
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+
+                // Navigation and control buttons...
                 Button(
                     onClick = { navController.navigate("login") },
                     modifier = Modifier
@@ -431,7 +951,24 @@ fun FirstScreen(navController: NavHostController) {
                     )
                 }
 
-                // Add Turn On/Off buttons for Shelly Plug
+                // Only show Scan button if wifiScanner is not null
+                wifiScanner?.let {
+                    Log.d("FirstScreen", "WifiScanner is not null, showing scan button")
+                    Button(
+                        onClick = { it.checkPermissionsAndScan() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Text(text = "Scan for Shelly Plug")
+                    }
+                } ?: Log.d("FirstScreen", "WifiScanner is null")
+
+
+                // Turn On/Off buttons for Shelly Plug
                 Button(
                     onClick = { deviceController.turnOnPlug() },
                     modifier = Modifier
@@ -459,7 +996,8 @@ fun FirstScreen(navController: NavHostController) {
         }
     }
 }
-
+ */
+/*
 @Preview(showBackground = true)
 @Composable
 fun FirstScreenPreview() {
@@ -467,6 +1005,8 @@ fun FirstScreenPreview() {
         FirstScreen(navController = rememberNavController())
     }
 }
+
+ */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2314,9 +2854,14 @@ fun SchedulePage(navController: NavHostController) {
 
 
 @Composable
-fun MyNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
-    NavHost(navController = navController, startDestination = "first") {
-        composable("first") { FirstScreen(navController) }
+fun MyNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    logs: MutableList<String>,
+    wifiScanner: WifiScanner?
+) {
+    NavHost(navController = navController, startDestination = "first", modifier = modifier) {
+        composable("first") { FirstScreen(navController = navController, wifiScanner = wifiScanner, logs = logs) }
         composable("login") { LoginScreen(navController) }
         composable("signup") { SignupScreen(navController) }
         composable("home") { HomeScreen(navController = navController) }
