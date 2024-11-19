@@ -66,6 +66,9 @@ dependencies {
     // Add Jetpack Compose Navigation
     implementation("androidx.navigation:navigation-compose:2.7.2")
 
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
+
     // Test dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

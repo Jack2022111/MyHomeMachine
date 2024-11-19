@@ -105,73 +105,87 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.activity.viewModels
+import androidx.lifecycle.ViewModelProvider
 
- /*
+import kotlin.math.roundToInt
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.runtime.remember
+import androidx.compose.ui.viewinterop.AndroidView
+
+
+
+/*
 class MainActivity : AppCompatActivity() {
 
-    // Initialize the DeviceController
-    private val deviceController = DeviceController()
+   // Initialize the DeviceController
+   private val deviceController = DeviceController()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+   override fun onCreate(savedInstanceState: Bundle?) {
+       super.onCreate(savedInstanceState)
+       setContentView(R.layout.activity_main)
 
-        // Initialize UI elements
-        val btnTurnOn: Button = findViewById(R.id.btnTurnOn)
-        val btnTurnOff: Button = findViewById(R.id.btnTurnOff)
+       // Initialize UI elements
+       val btnTurnOn: Button = findViewById(R.id.btnTurnOn)
+       val btnTurnOff: Button = findViewById(R.id.btnTurnOff)
 
-        // Set up button listeners to control the Shelly Plug
-        btnTurnOn.setOnClickListener {
-            deviceController.turnOnPlug()
-        }
+       // Set up button listeners to control the Shelly Plug
+       btnTurnOn.setOnClickListener {
+           deviceController.turnOnPlug()
+       }
 
-        btnTurnOff.setOnClickListener {
-            deviceController.turnOffPlug()
-        }
-    }
+       btnTurnOff.setOnClickListener {
+           deviceController.turnOffPlug()
+       }
+   }
 
-    // Inner DeviceController class to control the plug
-    inner class DeviceController {
-        private val client = OkHttpClient()
-        private val shellyIpAddress = "http://10.5.2.30"  // Replace with your Shelly Plug's IP
+   // Inner DeviceController class to control the plug
+   inner class DeviceController {
+       private val client = OkHttpClient()
+       private val shellyIpAddress = "http://10.5.2.30"  // Replace with your Shelly Plug's IP
 
-        // Function to turn on the Shelly Plug
-        fun turnOnPlug() {
-            val request = Request.Builder()
-                .url("$shellyIpAddress/relay/0/on")
-                .build()
+       // Function to turn on the Shelly Plug
+       fun turnOnPlug() {
+           val request = Request.Builder()
+               .url("$shellyIpAddress/relay/0/on")
+               .build()
 
-            makeRequest(request)
-        }
+           makeRequest(request)
+       }
 
-        // Function to turn off the Shelly Plug
-        fun turnOffPlug() {
-            val request = Request.Builder()
-                .url("$shellyIpAddress/relay/0/off")
-                .build()
+       // Function to turn off the Shelly Plug
+       fun turnOffPlug() {
+           val request = Request.Builder()
+               .url("$shellyIpAddress/relay/0/off")
+               .build()
 
-            makeRequest(request)
-        }
+           makeRequest(request)
+       }
 
-        private fun makeRequest(request: Request) {
-            client.newCall(request).enqueue(object : okhttp3.Callback {
-                override fun onFailure(call: okhttp3.Call, e: IOException) {
-                    e.printStackTrace()
-                }
+       private fun makeRequest(request: Request) {
+           client.newCall(request).enqueue(object : okhttp3.Callback {
+               override fun onFailure(call: okhttp3.Call, e: IOException) {
+                   e.printStackTrace()
+               }
 
-                override fun onResponse(call: okhttp3.Call, response: Response) {
-                    if (response.isSuccessful) {
-                        println("Request succeeded: ${response.body?.string()}")
-                    } else {
-                        println("Request failed: ${response.code}")
-                    }
-                }
-            })
-        }
-    }
+               override fun onResponse(call: okhttp3.Call, response: Response) {
+                   if (response.isSuccessful) {
+                       println("Request succeeded: ${response.body?.string()}")
+                   } else {
+                       println("Request failed: ${response.code}")
+                   }
+               }
+           })
+       }
+   }
 }
 
-  */
+ */
 
 /*
 
@@ -191,8 +205,9 @@ class MainActivity : ComponentActivity() {
 }
 
  */
-
+/*
 class MainActivity : FragmentActivity() {
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -218,7 +233,7 @@ class MainActivity : FragmentActivity() {
                 }
 
                 // Pass logs and wifiScanner to the MainScreen
-                MainScreen(navController, wifiScanner, logs)
+                //MainScreen(navController, wifiScanner, logs)
             }
         }
     }
@@ -237,6 +252,8 @@ class MainActivity : FragmentActivity() {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
     }
 }
+
+ */
 
 /*
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -306,16 +323,79 @@ fun MainScreen(navController: NavHostController) {
 }
 */
 
+class SharedViewModel(application: Application) : AndroidViewModel(application) {
+    val logs = mutableStateListOf<String>()
 
+    // Make wifiScanner non-nullable and initialize properly
+    lateinit var wifiScanner: WifiScanner
+        private set
+
+    fun initialize(activity: FragmentActivity) {
+        wifiScanner = WifiScanner(activity) { log ->
+            logs.add(log)
+        }
+    }
+}
+
+
+
+
+class MainActivity : FragmentActivity() {
+    @RequiresApi(Build.VERSION_CODES.M)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        checkAndRequestPermissions()
+
+        val sharedViewModel: SharedViewModel by viewModels()
+        sharedViewModel.initialize(this)
+
+        setContent {
+            MyHomeMachineTheme {
+                val navController = rememberNavController()
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    MyNavHost(
+                        navController = navController,
+                        modifier = Modifier.padding(innerPadding),
+                        sharedViewModel = sharedViewModel
+                    )
+                }
+            }
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+    }
+}
+
+
+
+
+
+/*
+@RequiresApi(Build.VERSION_CODES.M)
 @Composable
 fun MainScreen(
     navController: NavHostController,
     wifiScanner: WifiScanner?,
     logs: MutableList<String>
 ) {
-    // Pass wifiScanner and logs to FirstScreen
-    FirstScreen(navController = navController, wifiScanner = wifiScanner, logs = logs)
+    // Pass wifiScanner and logs to shellyscreen
+    ShellyScreen(navController = navController, wifiScanner = wifiScanner, logs = logs)
 }
+
+ */
 
 
 /*
@@ -364,7 +444,7 @@ class DeviceController {
 
     // Send the request and log the response
     private fun toggleShellyRelay(turnOn: Boolean) {
-        val url = if (turnOn) "http://192.168.33.1/relay/0/on" else "http://192.168.33.1/relay/0/off"
+        val url = if (turnOn) "http://192.168.33.1/relay/0?turn=on" else "http://192.168.33.1/relay/0?turn=off"
         val request = Request.Builder()
             .url(url)
             .build()
@@ -429,7 +509,7 @@ class DeviceController {
  */
 
 
-/*
+
 @Composable
 fun FirstScreen(navController: NavHostController) {
     Surface(
@@ -542,7 +622,7 @@ fun FirstScreen(navController: NavHostController) {
     }
 }
 
- */
+
 
 
 /*
@@ -663,8 +743,10 @@ fun FirstScreen(
 
 */
 
+/*
+@RequiresApi(Build.VERSION_CODES.M)
 @Composable
-fun FirstScreen(
+fun ShellyScreen(
     navController: NavHostController,
     wifiScanner: WifiScanner? = null,
     logs: MutableList<String>
@@ -788,48 +870,110 @@ fun FirstScreen(
                     }
                 }
             }
+        }
+    }
+}
 
-            // Bottom section with Login/Sign Up buttons
+ */
+
+
+@RequiresApi(Build.VERSION_CODES.M)
+@Composable
+fun ShellyScreen(
+    navController: NavHostController,
+    wifiScanner: WifiScanner,
+    logs: MutableList<String>
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Top Section (Placeholder for Logo or Title)
+            Text(
+                text = "Shelly Plug Setup",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Logs Display Section
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
-                Button(
-                    onClick = { navController.navigate("login") },
+                Text(
+                    text = "Logs",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Column(
                     modifier = Modifier
+                        .height(200.dp)
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .animateContentSize(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 8.dp)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            shape = MaterialTheme.shapes.medium
+                        )
+                        .padding(8.dp)
+                        .verticalScroll(rememberScrollState()) // Make logs scrollable
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Login", style = MaterialTheme.typography.titleMedium)
+                    logs.forEach { log ->
+                        Text(
+                            text = log,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Button(
-                    onClick = { navController.navigate("signup") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .animateContentSize(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                    onClick = { logs.clear() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Sign Up", style = MaterialTheme.typography.titleMedium)
+                ) {
+                    Text(text = "Clear Logs")
                 }
+            }
+
+            // Wi-Fi Scan Button
+            Button(
+                onClick = { wifiScanner.checkPermissionsAndScan() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Text(text = "Scan for Shelly Plug and Connect")
+            }
+
+            // Navigate to Home Button
+            Button(
+                onClick = { navController.navigate("home") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(top = 16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(text = "Go to Home")
             }
         }
     }
@@ -1663,6 +1807,7 @@ private data class DeviceCategory(
     val route: String
 )
 
+/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController) {
@@ -1681,6 +1826,7 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
         "Plug" to listOf("PulsePlug_XZ99", "VoltSpot_35P"),
         "Sensor" to listOf("ThermoSync_Q5", "BreezeIQ_G87")
     )
+
 
     Scaffold(
         topBar = {
@@ -1828,6 +1974,35 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
                 }
             }
 
+
+            // shelly device add screen
+            Column(
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = { navController.navigate("shelly") }, // Replace "shelly" with "main_screen"
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .animateContentSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 8.dp
+                    )
+                ) {
+                    Text("Navigate to add Shelly Smart Plug")
+                }
+            }
+
+
+
             // Add Device Button
             if (selectedDeviceName != null) {
                 Button(
@@ -1868,6 +2043,257 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
                         navController.navigate("home") {
                             popUpTo("home") { inclusive = false }
                         }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+ */
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController) {
+    // State variables
+    var selectedDeviceType by remember { mutableStateOf("") }
+    var selectedDeviceName by remember { mutableStateOf<String?>(null) }
+    var customDeviceName by remember { mutableStateOf("") }
+    var typeExpanded by remember { mutableStateOf(false) }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
+    // Define device types and associated device names
+    val deviceTypes = listOf("Camera", "Light", "Plug", "Sensor")
+    val devicesByType = mapOf(
+        "Camera" to listOf("RaspberryPiCamera"),
+        "Light" to listOf("Glowbit_A14", "LumenRay_M76", "AuraNode_V02"),
+        "Plug" to listOf("Shelly Smart Plug"),  // Only one plug option now
+        "Sensor" to listOf("ThermoSync_Q5", "BreezeIQ_G87")
+    )
+
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Add New Device") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Device Type Selection Card
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "1. Select Device Type",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = typeExpanded,
+                        onExpandedChange = { typeExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedDeviceType,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Device Type") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = typeExpanded,
+                            onDismissRequest = { typeExpanded = false }
+                        ) {
+                            deviceTypes.forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type) },
+                                    onClick = {
+                                        selectedDeviceType = type
+                                        selectedDeviceName = null
+                                        typeExpanded = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = when (type) {
+                                                "Camera" -> Icons.Default.Videocam
+                                                "Light" -> Icons.Default.LightMode
+                                                "Plug" -> Icons.Default.Power
+                                                else -> Icons.Default.Sensors
+                                            },
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Device Selection Card
+            if (selectedDeviceType.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "2. Select Available Device",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        devicesByType[selectedDeviceType]?.forEach { device ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedDeviceName = device }
+                                    .padding(vertical = 8.dp, horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedDeviceName == device,
+                                    onClick = { selectedDeviceName = device }
+                                )
+                                Text(device)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Custom Name Card
+            if (selectedDeviceName != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "3. Set Custom Name (Optional)",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = customDeviceName,
+                            onValueChange = { customDeviceName = it },
+                            label = { Text("Custom Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(selectedDeviceName ?: "") }
+                        )
+                    }
+                }
+            }
+
+
+            // shelly device add screen button
+            Column(
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = { navController.navigate("shelly") }, // Replace "shelly" with "main_screen"
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .animateContentSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 8.dp
+                    ),
+                    enabled = selectedDeviceType == "Plug" && selectedDeviceName == "Shelly Smart Plug" // Only enable when Shelly Smart Plug is selected
+                ) {
+                    Text("Navigate to add Shelly Smart Plug")
+                }
+            }
+
+            // Add Device Button
+            if (selectedDeviceName != null) {
+                Button(
+                    onClick = { showConfirmDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Device")
+                }
+            }
+        }
+    }
+
+    // Confirmation Dialog
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Add Device") },
+            text = {
+                Text(
+                    "Add ${customDeviceName.ifEmpty { selectedDeviceName }} " +
+                            "to your ${selectedDeviceType} collection?"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val deviceName = customDeviceName.ifEmpty { selectedDeviceName ?: "" }
+                        DeviceManager.addDevice(deviceName, selectedDeviceType)
+                        showConfirmDialog = false
+                        //navController.navigate("home") {
+                        //    popUpTo("home") { inclusive = false }
+                        //}
                     }
                 ) {
                     Text("Confirm")
@@ -2392,7 +2818,7 @@ private fun EnhancedScheduleDialog(onDismiss: () -> Unit) {
 // Plugs section
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlugsScreen(navController: NavHostController) {
+fun PlugsScreen(navController: NavHostController, deviceController: DeviceController) {
     var knownPlugs = DeviceManager.knownPlugs
     var selectedPlug by remember { mutableStateOf<String?>(null) }
     var isPlugOn by remember { mutableStateOf(false) }
@@ -2479,7 +2905,14 @@ fun PlugsScreen(navController: NavHostController) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         IconButton(
-                            onClick = { isPlugOn = !isPlugOn },
+                            onClick = {
+                                if (isPlugOn) {
+                                    deviceController.turnOffPlug()  // Turn off the plug
+                                } else {
+                                    deviceController.turnOnPlug()  // Turn on the plug
+                                }
+                                isPlugOn = !isPlugOn  // Update the state
+                            },
                             modifier = Modifier
                                 .size(64.dp)
                                 .background(
@@ -2595,15 +3028,20 @@ fun CamerasScreen(navController: NavHostController) {
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
+                        // WebView for camera stream
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    settings.javaScriptEnabled = true
+                                    webViewClient = WebViewClient()
+                                    // Replace with your Raspberry Pi's IP address and port
+                                    loadUrl("http://10.5.2.21:5000/stream")
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("Live Camera Feed Placeholder")
-                        }
+                                .height(300.dp)
+                        )
                     }
                 }
             }
@@ -2852,16 +3290,17 @@ fun SchedulePage(navController: NavHostController) {
     }
 }
 
-
+/*
+@RequiresApi(Build.VERSION_CODES.M)
 @Composable
 fun MyNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    logs: MutableList<String>,
-    wifiScanner: WifiScanner?
+    sharedViewModel: SharedViewModel
 ) {
     NavHost(navController = navController, startDestination = "first", modifier = modifier) {
-        composable("first") { FirstScreen(navController = navController, wifiScanner = wifiScanner, logs = logs) }
+        composable("shelly") { ShellyScreen(navController = navController, wifiScanner = wifiScanner, logs = logs) }
+        composable("first") { FirstScreen(navController) }
         composable("login") { LoginScreen(navController) }
         composable("signup") { SignupScreen(navController) }
         composable("home") { HomeScreen(navController = navController) }
@@ -2873,6 +3312,65 @@ fun MyNavHost(
         composable("schedule") {SchedulePage(navController = navController)}
     }
 }
+
+ */
+
+@RequiresApi(Build.VERSION_CODES.M)
+@Composable
+fun MyNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    sharedViewModel: SharedViewModel
+) {
+    NavHost(
+        navController = navController,
+        startDestination = "first",
+        modifier = modifier
+    ) {
+        composable("shelly") {
+            ShellyScreen(
+                navController = navController,
+                wifiScanner = sharedViewModel.wifiScanner,
+                logs = sharedViewModel.logs
+            )
+        }
+        composable("first") {
+            FirstScreen(navController)
+        }
+        composable("login") {
+            LoginScreen(navController)
+        }
+        composable("signup") {
+            SignupScreen(navController)
+        }
+        composable("home") {
+            HomeScreen(navController = navController)
+        }
+        composable("addDevice") {
+            AddDeviceScreen(
+                onDeviceAdded = { navController.popBackStack() },
+                navController = navController
+            )
+        }
+        composable("lights") {
+            LightsScreen(navController = navController)
+        }
+        composable("plugs") {
+            val deviceController = DeviceController()  // Create an instance of DeviceController
+            PlugsScreen(navController = navController, deviceController = deviceController)  // Pass it to PlugsScreen
+        }
+        composable("cameras") {
+            CamerasScreen(navController = navController)
+        }
+        composable("sensors") {
+            SensorsScreen(navController = navController)
+        }
+        composable("schedule") {
+            SchedulePage(navController = navController)
+        }
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
