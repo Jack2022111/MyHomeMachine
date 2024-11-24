@@ -2,6 +2,10 @@ package com.example.myhomemachine.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+// Fixed colors that won't change between themes
+val FixedPrimary = Color(0xFF6650a4)  //  purple color
+val FixedError = Color(0xFFB00020)    //  red color
+
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)
