@@ -1,123 +1,69 @@
 package com.example.myhomemachine
 
+import android.Manifest
+import android.app.Application
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.util.Log
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.example.myhomemachine.ui.theme.MyHomeMachineTheme
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment
-import androidx.compose.material3.TextField // add this import if it’s not present
-import androidx.compose.runtime.remember // add this import if it’s not present
-import androidx.compose.runtime.mutableStateOf // add this import if it’s not present
-import androidx.compose.runtime.*
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import com.example.myhomemachine.data.DeviceManager
-
-import androidx.compose.foundation.clickable
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.Image
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.outlined.WbSunny
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.toArgb
-import kotlin.math.roundToInt
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.material.icons.Icons
-
-import android.widget.Button
-import androidx.appcompat.app.AppCompatActivity
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import java.io.IOException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.*
-import android.util.Log
-import androidx.fragment.app.FragmentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.compose.rememberNavController
-import com.example.myhomemachine.ui.theme.MyHomeMachineTheme
-import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
-import android.content.pm.PackageManager
-import android.location.LocationManager
-import android.net.wifi.ScanResult
-import android.net.wifi.WifiManager
-import android.provider.Settings
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import android.net.wifi.WifiNetworkSpecifier
-import android.net.ConnectivityManager
-import android.net.NetworkRequest
-import android.os.Build
-import androidx.annotation.RequiresApi
-import android.content.Intent
-import android.net.Network
-import android.net.NetworkCapabilities
-import androidx.compose.foundation.border
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-
-import android.app.Application
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.AndroidViewModel
-import androidx.activity.viewModels
-import androidx.lifecycle.ViewModelProvider
-
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.myhomemachine.data.DeviceManager
+import com.example.myhomemachine.ui.theme.MyHomeMachineTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import okhttp3.*
+import java.io.IOException
 import kotlin.math.roundToInt
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.compose.runtime.remember
-import androidx.compose.ui.viewinterop.AndroidView
-
+import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 
 /*
@@ -326,29 +272,36 @@ fun MainScreen(navController: NavHostController) {
 class SharedViewModel(application: Application) : AndroidViewModel(application) {
     val logs = mutableStateListOf<String>()
 
+    lateinit var mqttHelper: MqttHelper
+        private set
+
     // Make wifiScanner non-nullable and initialize properly
     lateinit var wifiScanner: WifiScanner
         private set
 
-    fun initialize(activity: FragmentActivity) {
+    fun initialize(activity: FragmentActivity, deviceController: DeviceController) {
         wifiScanner = WifiScanner(activity) { log ->
             logs.add(log)
+        }
+        mqttHelper = MqttHelper { message ->
+            logs.add(message)
+            if (message.contains("Motion detected!")) {
+                deviceController.turnOnPlug()
+            }
         }
     }
 }
 
-
-
-
 class MainActivity : FragmentActivity() {
+    private val sharedViewModel: SharedViewModel by viewModels()
+    private val deviceController = DeviceController()
+
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         checkAndRequestPermissions()
-
-        val sharedViewModel: SharedViewModel by viewModels()
-        sharedViewModel.initialize(this)
+        sharedViewModel.initialize(this, deviceController)
 
         setContent {
             MyHomeMachineTheme {
@@ -379,9 +332,52 @@ class MainActivity : FragmentActivity() {
     }
 }
 
+class MqttHelper(private val messageCallback: (String) -> Unit) {
+    private val brokerUrl = "tcp://10.5.2.21:1883"  // Replace with your Raspberry Pi's MQTT broker IP
+    private val clientId = "AndroidClient"
+    private val topic = "home/motion"
 
+    private var mqttClient: MqttClient? = null
 
+    init {
+        try {
+            mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence()).apply {
+                setCallback(object : MqttCallback {
+                    override fun connectionLost(cause: Throwable?) {
+                        cause?.printStackTrace()
+                    }
 
+                    override fun messageArrived(topic: String, message: MqttMessage?) {
+                        message?.let {
+                            val msgString = it.toString()
+                            messageCallback(msgString)  // Pass received message to UI or device logic
+                        }
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                })
+
+                val options = MqttConnectOptions().apply {
+                    isAutomaticReconnect = true
+                    isCleanSession = true
+                }
+
+                connect(options)
+                subscribe(topic)
+            }
+        } catch (e: MqttException) {
+            e.printStackTrace()
+        }
+    }
+
+    fun disconnect() {
+        try {
+            mqttClient?.disconnect()
+        } catch (e: MqttException) {
+            e.printStackTrace()
+        }
+    }
+}
 
 /*
 @RequiresApi(Build.VERSION_CODES.M)
@@ -429,7 +425,6 @@ fun MainScreen(
 // DeviceController class to manage the Shelly Plug
 class DeviceController {
     private val client = OkHttpClient()
-    //private val shellyIpAddress = "http://10.5.2.30" // Shelly plug IP (this is specifically for b2 wifi network it will change later)
 
     // Function to turn on the Shelly Plug
     fun turnOnPlug() {
@@ -440,7 +435,6 @@ class DeviceController {
     fun turnOffPlug() {
         toggleShellyRelay(false)
     }
-
 
     // Send the request and log the response
     private fun toggleShellyRelay(turnOn: Boolean) {
@@ -2282,7 +2276,7 @@ fun AddDeviceScreen(onDeviceAdded: () -> Unit, navController: NavHostController)
             text = {
                 Text(
                     "Add ${customDeviceName.ifEmpty { selectedDeviceName }} " +
-                            "to your ${selectedDeviceType} collection?"
+                            "to your $selectedDeviceType collection?"
                 )
             },
             confirmButton = {
