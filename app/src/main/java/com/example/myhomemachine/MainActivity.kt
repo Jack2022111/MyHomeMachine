@@ -3029,7 +3029,7 @@ fun CamerasScreen(navController: NavHostController) {
                                     settings.javaScriptEnabled = true
                                     webViewClient = WebViewClient()
                                     // Replace with your Raspberry Pi's IP address and port
-                                    loadUrl("http://10.5.2.21:5000/stream")
+                                    loadUrl("http://10.5.2.37:5000/stream")
                                 }
                             },
                             modifier = Modifier
