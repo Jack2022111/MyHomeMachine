@@ -62,13 +62,6 @@ import kotlinx.coroutines.launch
 import okhttp3.*
 import java.io.IOException
 import kotlin.math.roundToInt
-import org.eclipse.paho.client.mqttv3.*
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
-import org.eclipse.paho.client.mqttv3.MqttClient
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
-import org.eclipse.paho.client.mqttv3.MqttException
-import org.eclipse.paho.client.mqttv3.MqttMessage
-
 
 /*
 class MainActivity : AppCompatActivity() {
@@ -276,22 +269,17 @@ fun MainScreen(navController: NavHostController) {
 class SharedViewModel(application: Application) : AndroidViewModel(application) {
     val logs = mutableStateListOf<String>()
 
-    lateinit var mqttHelper: MqttHelper
-        private set
-
-    // Make wifiScanner non-nullable and initialize properly
     lateinit var wifiScanner: WifiScanner
         private set
+    lateinit var mqttHelper: MqttHelper  // MQTT Client
 
     fun initialize(activity: FragmentActivity, deviceController: DeviceController) {
         wifiScanner = WifiScanner(activity) { log ->
             logs.add(log)
         }
-        mqttHelper = MqttHelper { message ->
-            logs.add(message)
-            if (message.contains("Motion detected!")) {
-                deviceController.turnOnPlug()
-            }
+
+        mqttHelper = MqttHelper(activity) { message ->
+            logs.add("MQTT $message")  // Log motion detection
         }
     }
 }
@@ -333,53 +321,6 @@ class MainActivity : FragmentActivity() {
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
-    }
-}
-
-class MqttHelper(private val messageCallback: (String) -> Unit) {
-    private val brokerUrl = "tcp://10.5.2.21:1883"  // Replace with your Raspberry Pi's MQTT broker IP
-    private val clientId = "AndroidClient"
-    private val topic = "home/motion"
-
-    private var mqttClient: MqttClient? = null
-
-    init {
-        try {
-            mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence()).apply {
-                setCallback(object : MqttCallback {
-                    override fun connectionLost(cause: Throwable?) {
-                        cause?.printStackTrace()
-                    }
-
-                    override fun messageArrived(topic: String, message: MqttMessage?) {
-                        message?.let {
-                            val msgString = it.toString()
-                            messageCallback(msgString)  // Pass received message to UI or device logic
-                        }
-                    }
-
-                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                })
-
-                val options = MqttConnectOptions().apply {
-                    isAutomaticReconnect = true
-                    isCleanSession = true
-                }
-
-                connect(options)
-                subscribe(topic)
-            }
-        } catch (e: MqttException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun disconnect() {
-        try {
-            mqttClient?.disconnect()
-        } catch (e: MqttException) {
-            e.printStackTrace()
-        }
     }
 }
 
